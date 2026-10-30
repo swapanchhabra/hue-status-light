@@ -20,8 +20,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Test-run pattern (register.ts and hue-status.sh agree)
-        run: node tests/patterns.test.mjs
+      - name: Test-run pattern (Cowork module and hue-status.sh agree)
+        run: node tests/patterns.test.mjs hooks/register.ts scripts/hue-status.sh
       - name: claude plugin validate
         run: npx -y @anthropic-ai/claude-code plugin validate .
 

@@ -88,7 +88,7 @@ if [ "$CMD" = testcheck ]; then
   [ -n "$TCMD" ] || exit 0
   # Only a test tool in command position counts (after ; & | ( or a wrapper
   # like `uv run` / `npx`), so `which pytest` or `pip install pytest` do not.
-  # Keep identical to TEST_SRC in hooks/register.ts.
+  # Keep identical to TEST_SRC in the Cowork module.
   TEST_RE='(^|[;&|(])[[:space:]]*(([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*|env|time|command|exec|nice|sudo|xvfb-run( -a)?|timeout [0-9.]+[smhd]?|npx|pnpx|bunx|bun x|pnpm|yarn|uv run|poetry run|pipenv run|pdm run|hatch run|rye run|bundle exec)[[:space:]]+)*([^[:space:];&|()]*/)?(pytest|py\.test|jest|vitest|mocha|ava|playwright test|cypress run|go test|cargo (test|nextest)|ctest|rspec|phpunit|dotnet test|swift test|tox|nox|(npm|pnpm|yarn|bun)( run)? test([:-][^[:space:];&|]*)?|python[0-9.]* -m (pytest|unittest)|gradlew?([[:space:]][^;&|]*)?[[:space:]:](test|check)[^[:space:];&|]*|mvnw?([[:space:]][^;&|]*)? (test|verify)|xcodebuild([[:space:]][^;&|]*)? test|make([[:space:]][^;&|]*)? (test|check)[^[:space:];&|]*)([[:space:];&|)]|$)'
   printf '%s' "$TCMD" | grep -Eq "$TEST_RE" || exit 0
   EVENT="$(printf '%s' "$INPUT" | "$JQ" -r '.hook_event_name // empty' 2>/dev/null)"
