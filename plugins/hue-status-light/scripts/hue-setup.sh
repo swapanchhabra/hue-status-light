@@ -41,11 +41,20 @@ set_kv() {   # set_kv KEY VALUE  (keeps the other lines of the config)
   chmod 600 "$CONFIG"
 }
 
+valid_user() { printf '%s' "$1" | grep -Eq '^[A-Za-z0-9-]{1,128}$'; }
+
+# The config is parsed, never sourced: a value cannot run code.
+read_config() {
+  [ -r "$CONFIG" ] || return 1
+  while IFS='=' read -r k v || [ -n "$k" ]; do
+    case "$k" in BRIDGE_IP|HUE_USER|TARGET|TARGET_ID) printf -v "$k" '%s' "$v" ;; esac
+  done < "$CONFIG"
+}
+
 load_config() {
-  [ -r "$CONFIG" ] || die "no config yet: run discover, pair and target first"
-  # shellcheck disable=SC1090
-  . "$CONFIG"
+  read_config || die "no config yet: run discover, pair and target first"
   [ -n "$BRIDGE_IP" ] && [ -n "$HUE_USER" ] || die "not paired yet: run pair <ip>"
+  valid_ip "$BRIDGE_IP" && valid_user "$HUE_USER" || die "config is damaged: run pair <ip> again"
   API="http://$BRIDGE_IP/api/$HUE_USER"
 }
 
@@ -60,9 +69,7 @@ case "$1" in
     for f in hue-status.sh hue-setup.sh; do
       [ -x "$HUE_DIR/$f" ] && echo "installed: $f" || echo "not installed: $f"
     done
-    if [ -r "$CONFIG" ]; then
-      # shellcheck disable=SC1090
-      . "$CONFIG"
+    if read_config; then
       echo "bridge: ${BRIDGE_IP:-none}"
       echo "paired: $([ -n "$HUE_USER" ] && echo yes || echo no)"
       echo "target: ${TARGET:-none} ${TARGET_ID}"
@@ -116,7 +123,7 @@ case "$1" in
       for _ in $(seq 1 60); do
         R="$("$CURL" -s -m 3 -X POST -d '{"devicetype":"claude#statuslight"}' "http://$2/api")"
         U="$(printf '%s' "$R" | grep -o '"username"[[:space:]]*:[[:space:]]*"[^"]*"' | sed 's/.*"\([^"]*\)"$/\1/')"
-        if [ -n "$U" ]; then
+        if valid_user "$U"; then
           set_kv BRIDGE_IP "$2"; set_kv HUE_USER "$U"
           echo PAIRED > "$PAIR_STATUS"; exit 0
         fi
@@ -136,7 +143,7 @@ case "$1" in
     done
     S="$(cat "$PAIR_STATUS" 2>/dev/null)"
     echo "${S:-NOT STARTED}"
-    [ "$S" = PAIRED ] || [ "$S" = TIMEOUT ] && rm -f "$PAIR_STATUS"
+    if [ "$S" = PAIRED ] || [ "$S" = TIMEOUT ]; then rm -f "$PAIR_STATUS"; fi
     ;;
 
   lights)

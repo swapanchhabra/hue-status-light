@@ -98,7 +98,7 @@ Uninstall the plugin (`/plugin uninstall hue-status-light`), then delete `~/.cla
 
 ## How it works
 
-`hue-status.sh` stores each session's latest state (`working`, `question`, `permission`, `failed`, `done`) with a timestamp, recomputes the most urgent one across all sessions on every event, and sets the light through the Hue API v1. Flashes use the bridge's own `lselect` alert; a short one-off background timer restores the steady colour after 5 seconds. Failed tests are detected from the command (pytest, jest, vitest, go test, cargo test, npm/pnpm/yarn test, mvn, gradle, …) plus a non-zero exit code or failure text in the output.
+`hue-status.sh` stores each session's latest state (`working`, `question`, `permission`, `failed`, `done`) with a timestamp, recomputes the most urgent one across all sessions on every event, and sets the light through the Hue API v1. Flashes use the bridge's own `lselect` alert; a short one-off background timer restores the steady colour after 5 seconds. Failed tests are detected from the command (pytest, jest, vitest, go test, cargo test, npm/pnpm/yarn test, mvn, gradle, …, only when it is the command being run, so `which pytest` or `pip install pytest` do not count) plus a non-zero exit code or failure text in the output. A turn that an API error ends settles the light without a flash; so does a turn you stop with Esc, once Claude Code reports the session idle.
 
 ## License
 

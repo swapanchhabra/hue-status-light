@@ -1,0 +1,48 @@
+# yes|no <TAB> command: should this Bash command count as a test run?
+yes	pytest
+yes	pytest tests/ -q
+yes	cd app && pytest -x
+yes	uv run pytest
+yes	poetry run pytest -k foo
+yes	python -m pytest
+yes	python3.12 -m unittest discover
+yes	.venv/bin/pytest
+yes	FOO=1 pytest
+yes	timeout 300 pytest
+yes	npm test
+yes	npm run test:unit
+yes	pnpm test-e2e
+yes	yarn jest --ci
+yes	npx vitest run
+yes	npx playwright test
+yes	node_modules/.bin/jest
+yes	bun test
+yes	go test ./...
+yes	cargo test
+yes	cargo nextest run
+yes	./gradlew test
+yes	./gradlew :app:check
+yes	mvn -q verify
+yes	make test
+yes	make -C build check-all
+yes	tox -e py311
+yes	dotnet test
+yes	bundle exec rspec
+yes	vendor/bin/phpunit
+yes	npm ci && npm test 2>&1 | tail -20
+yes	(cd web && npx jest)
+no	which pytest
+no	pip install pytest
+no	grep -rn foo jest.config.js
+no	ls tox.ini
+no	cat pytest.ini
+no	npm install --save-dev jest
+no	yarn add vitest
+no	git log --grep pytest
+no	pytest-cov --help
+no	make build
+no	go build ./...
+no	cargo build
+no	avahi-browse -a
+no	noxfile.py
+no	echo testing
