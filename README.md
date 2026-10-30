@@ -27,13 +27,15 @@ Regular chats on claude.ai cannot drive the light: they do not run plugin hooks.
 In Claude Code:
 
 ```
-/plugin marketplace add swapanchhabra/hue-status-light
+/plugin marketplace add https://github.com/swapanchhabra/hue-status-light.git
 /plugin install hue-status-light@hue-status-light
 ```
 
-From a shell: `claude plugin marketplace add swapanchhabra/hue-status-light` then `claude plugin install hue-status-light@hue-status-light`.
+The short form `swapanchhabra/hue-status-light` also works, but only on a computer with a GitHub SSH key; the full URL works everywhere.
 
-In the Claude desktop app: click **+** next to the prompt box → **Plugins** → **Add marketplace** → `swapanchhabra/hue-status-light` → add **hue-status-light**.
+From a shell: `claude plugin marketplace add https://github.com/swapanchhabra/hue-status-light.git` then `claude plugin install hue-status-light@hue-status-light`.
+
+In the Claude desktop app: click **+** next to the prompt box → **Plugins** → **Add marketplace** → `https://github.com/swapanchhabra/hue-status-light.git` → add **hue-status-light**.
 
 ## Set up
 
