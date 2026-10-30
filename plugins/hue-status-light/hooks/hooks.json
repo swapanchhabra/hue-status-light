@@ -83,6 +83,16 @@
         ]
       },
       {
+        "matcher": "idle_prompt",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/scripts/hue-status.sh\" idle",
+            "timeout": 10
+          }
+        ]
+      },
+      {
         "matcher": "elicitation_dialog",
         "hooks": [
           {
@@ -99,6 +109,17 @@
           {
             "type": "command",
             "command": "\"${CLAUDE_PLUGIN_ROOT}/scripts/hue-status.sh\" done",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "StopFailure": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/scripts/hue-status.sh\" idle",
             "timeout": 10
           }
         ]

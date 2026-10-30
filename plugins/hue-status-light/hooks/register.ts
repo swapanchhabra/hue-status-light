@@ -16,15 +16,18 @@ import type { EngineInterface, Register } from 'claude-code'
 // Hooks hand their event on unchanged with `return next(e)`; the one that
 // needs a tool's result awaits next(e) and returns that result untouched.
 
-type Cmd = 'working' | 'question' | 'waiting' | 'tool' | 'fail' | 'done' | 'end'
+type Cmd = 'working' | 'question' | 'waiting' | 'tool' | 'fail' | 'done' | 'idle' | 'end'
 
 const SERVER = 'remote-devices'
 const TOOL = 'Control_your_Mac__osascript'
 
 const BASH_TOOLS = new Set(['Bash', 'mcp__remote-devices__device_bash'])
 
-const TEST_RE =
-  /(^|[;&|\s(])(pytest|py\.test|jest|vitest|mocha|ava|playwright test|cypress run|go test|cargo (test|nextest)|ctest|rspec|phpunit|dotnet test|swift test|tox|nox|(npm|pnpm|yarn|bun)( run)? test([:\s]|$)|npx (jest|vitest|mocha|playwright)|python[0-9.]* -m (pytest|unittest)|(\.\/)?gradlew?[^;&|]* (test|check)|mvn[^;&|]* (test|verify)|xcodebuild[^;&|]* test|make[^;&|]* (test|check))/
+// Only a test tool in command position counts (after ; & | ( or a wrapper like
+// `uv run` / `npx`), so `which pytest` or `pip install pytest` do not. POSIX
+// classes so it stays identical to TEST_RE in scripts/hue-status.sh.
+const TEST_SRC = '(^|[;&|(])[[:space:]]*(([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*|env|time|command|exec|nice|sudo|xvfb-run( -a)?|timeout [0-9.]+[smhd]?|npx|pnpx|bunx|bun x|pnpm|yarn|uv run|poetry run|pipenv run|pdm run|hatch run|rye run|bundle exec)[[:space:]]+)*([^[:space:];&|()]*/)?(pytest|py\.test|jest|vitest|mocha|ava|playwright test|cypress run|go test|cargo (test|nextest)|ctest|rspec|phpunit|dotnet test|swift test|tox|nox|(npm|pnpm|yarn|bun)( run)? test([:-][^[:space:];&|]*)?|python[0-9.]* -m (pytest|unittest)|gradlew?([[:space:]][^;&|]*)?[[:space:]:](test|check)[^[:space:];&|]*|mvnw?([[:space:]][^;&|]*)? (test|verify)|xcodebuild([[:space:]][^;&|]*)? test|make([[:space:]][^;&|]*)? (test|check)[^[:space:];&|]*)([[:space:];&|)]|$)'
+const TEST_RE = new RegExp(TEST_SRC.replaceAll('[:space:]', '\\s'), 'm')
 
 const FAIL_RE =
   /(\b[1-9][0-9]* (failed|failing|failures?)\b|^FAIL[\s:]|--- FAIL|test result: FAILED|^FAILED |BUILD FAILURE|Tests run:.*Failures: [1-9])/m
@@ -87,9 +90,11 @@ export const register: Register = on => {
   })
 
   // End of each main-loop turn: green flash, or red flash if a test failed.
+  // A turn you interrupted or that an error ended settles without a flash,
+  // as in Claude Code (where Stop does not fire for those).
   on('turn.complete', ($, e, next) => {
     try {
-      if (!e.agentId) send($, 'done')
+      if (!e.agentId) send($, e.reason === 'answer' ? 'done' : 'idle')
     } catch {}
     return next(e)
   })
