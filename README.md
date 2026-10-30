@@ -70,13 +70,31 @@ The script reads the hook's JSON from stdin: `session_id`, and for `testcheck` t
 
 Cowork runs in the cloud or a VM, which cannot reach a bridge on your home network, so the module asks your linked Mac to run the script instead.
 
-- **Off unless you turn it on:** the module registers no hooks and calls nothing until you turn on the plugin option `cowork_mac_light` (**Cowork: drive the light through your Mac**). Claude Code sessions on your computer never need it.
+**Off unless you turn it on.** The module registers no hooks and calls nothing until you turn on the plugin option `cowork_mac_light` (**Cowork: drive the light through your Mac**). Claude Code sessions on your computer never need it.
 
-- **The one tool it calls itself:** `osascript` from the **Control your Mac** extension (MCP server `remote-devices`, tool `Control_your_Mac__osascript`). Each call runs exactly `do shell script` of `~/.claude/hue/hue-status.sh <word>` with `{"session_id":"cowork-<id>"}` on stdin, nothing else. It is called when you send a message, when Claude asks a question, when a permission prompt is shown, after a tool call that followed one of those prompts, when a Bash test run fails, when a turn ends (`idle` instead of `done` if you interrupted it or an error ended it), and when the session ends. The model never sees or triggers these calls. If no Mac is linked the call fails quietly and the module pauses for 60 seconds.
-- **What it reads:** that a prompt was submitted (not its text); the name of each tool called; for Bash tools (`Bash`, `mcp__remote-devices__device_bash`) the command and the result text, matched inside the module against test-runner and failure patterns; whether a turn ended in the main conversation; the session id.
-- **What it sends, and where:** only the event word and `cowork-<session id>`, to the script on your own Mac. No conversation text, commands, tool output or file contents leave the module. From the Mac, the script sends only light commands (on, brightness, colour, blink) to your Hue Bridge over plain HTTP on your local network.
-- **Permission hook:** the module watches `PermissionRequest` (and the `Notification` event) only to turn the light orange while a permission prompt is shown. It decides nothing: it never allows, denies or asks, and always passes the request on unchanged to you.
-- **Tool calls:** it watches every tool call only to read the result after the tool has run, and returns that result unchanged. It never denies or rewrites a call.
+**Which tool the module calls itself, and when.** Exactly one: `osascript` from the **Control your Mac** extension (MCP server `remote-devices`, tool `Control_your_Mac__osascript`). The module calls it, not the model; the model never sees or triggers these calls. It calls it once for each of these events:
+
+| Event | Word sent |
+|---|---|
+| you send a message | `working` |
+| Claude asks you a question (AskUserQuestion, or an MCP elicitation) | `question` |
+| a permission prompt is shown | `waiting` |
+| a tool call finishes after one of those prompts | `tool` |
+| a Bash test run fails | `fail` |
+| a turn in the main conversation ends | `done`, or `idle` if you interrupted it or an error ended it |
+| the session ends | `end` |
+
+If no Mac is linked, the call fails quietly and the module waits 60 seconds before trying again.
+
+**What that call does.** `osascript` is macOS's AppleScript runner, and `do shell script` runs one shell command on your Mac as you. The module's call always runs the same command, `~/.claude/hue/hue-status.sh <word>`, with `{"session_id":"cowork-<id>"}` on stdin. That is the plugin's own `scripts/hue-status.sh`, copied there by `/hue-setup`. It records the word for this session and sets the light; it reads no other files and runs nothing else.
+
+**What the module reads.** From the conversation: that a prompt was submitted (never its text), the name of each tool called, and, for Bash tools (`Bash`, `mcp__remote-devices__device_bash`), the command and its result text, which it only matches against test-runner and failure patterns inside the module. It also reads whether a turn ended in the main conversation, and the session id. It reads no local files: the only local data involved is the script's own state in `~/.claude/hue/` on your Mac, which the script reads, not the module.
+
+**What the module sends, and where.** Only the event word and `cowork-<session id>`, to that script on your own Mac. No message text, commands, tool output or file contents leave the module. From the Mac, the script sends only light commands (on, brightness, colour, blink) to your Hue Bridge over plain HTTP on your local network. Nothing goes to the author or any other service.
+
+**What the permission hook decides, and when.** Nothing. The module watches `PermissionRequest` (and the `Notification` event) only to turn the light orange while a permission prompt is shown. It never allows, denies or asks, and always passes the request on unchanged, so the decision stays with you.
+
+**Tool calls.** The module watches every tool call only to read the result after the tool has run, and returns that result unchanged. It never denies or rewrites a call.
 
 ### Setup (`/hue-setup`)
 
