@@ -8,7 +8,7 @@
   "plugins": [
     {
       "name": "hue-status-light",
-      "source": "./plugins/hue-status-light",
+      "source": "./",
       "description": "A Philips Hue colour light as a status light for your Claude Code and Cowork sessions."
     }
   ]

@@ -12,6 +12,10 @@ import type { EngineInterface, Register } from 'claude-code'
 //           permission prompt, green when a turn finishes, red if a test
 //           failed during it
 //
+// Off unless you turn on the plugin option `cowork_mac_light`: only then does
+// the module call the osascript tool on your Mac, and it registers no hooks
+// at all otherwise.
+//
 // Every hook only observes: it never changes, answers or blocks an event.
 // Hooks hand their event on unchanged with `return next(e)`; the one that
 // needs a tool's result awaits next(e) and returns that result untouched.
@@ -72,7 +76,9 @@ function commandOf(input: unknown): string {
   return ''
 }
 
-export const register: Register = on => {
+export const register: Register = (on, options) => {
+  if (options.cowork_mac_light !== true) return
+
   on('session.start', async ($, e, next) => {
     try {
       const id = await $.session.id()

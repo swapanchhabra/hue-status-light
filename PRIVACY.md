@@ -10,7 +10,7 @@ Nothing. The author runs no servers and receives no data. There is no analytics,
 
 ## What it processes, and where
 
-- **Session events** (a message was sent, Claude asked a question, a permission prompt is shown, a tool finished, a turn or session ended). These are turned into one of seven status words and a session id. They are processed only on your computer, or for Cowork inside your own session and then on your linked Mac.
+- **Session events** (a message was sent, Claude asked a question, a permission prompt is shown, a tool finished, a turn or session ended). These are turned into one of eight status words and a session id. They are processed only on your computer, or for Cowork, only if you turn on the plugin option `cowork_mac_light`, inside your own session and then on your linked Mac.
 - **Bash commands and their output**, only to check whether a test run failed. This check happens in place; the command and output are not stored or sent anywhere.
 - **Your Hue Bridge address, bridge username and chosen light**, stored in `~/.claude/hue/config` on your computer (file mode 600). The bridge username is sent only to your own bridge.
 

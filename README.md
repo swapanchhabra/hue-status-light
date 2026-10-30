@@ -18,7 +18,7 @@ Every event first **flashes at full brightness for 5 seconds**: purple on a ques
 
 - A Philips Hue Bridge (v2, the square one) and at least one **colour** Hue light.
 - **Claude Code** on macOS or Linux, on the same network as the bridge, with `curl` and `jq` (jq is built into macOS 15+, otherwise `brew install jq` / your package manager).
-- **Cowork** (optional): macOS, the Claude desktop app, tasks linked to your Mac, and the **Control your Mac** extension enabled. The Mac must be awake with the Claude app running.
+- **Cowork** (optional, off by default): macOS, the Claude desktop app, tasks linked to your Mac, the **Control your Mac** extension enabled, and the plugin option **Cowork: drive the light through your Mac** (`cowork_mac_light`) turned on. To turn it on: `/plugin configure hue-status-light@hue-status-light` in Claude Code, or the plugin's settings in the desktop app. The Mac must be awake with the Claude app running.
 
 Regular chats on claude.ai cannot drive the light: they do not run plugin hooks.
 
@@ -46,7 +46,7 @@ Run **`/hue-setup`** (or ask Claude to "set up my Hue status light"). Claude wil
 
 ## What it runs and what it sends
 
-Short version: the plugin reads a few session events, turns each into one of seven words (`working`, `question`, `waiting`, `tool`, `fail`, `done`, `end`), and sends that word plus a session id to a script on your own computer, which sets your Hue light over your local network. Nothing is sent to the author or any other service, and the plugin never answers, changes or blocks anything Claude does.
+Short version: the plugin reads a few session events, turns each into one of eight words (`working`, `question`, `waiting`, `tool`, `fail`, `done`, `idle`, `end`), and sends that word plus a session id to a script on your own computer, which sets your Hue light over your local network. Nothing is sent to the author or any other service, and the plugin never answers, changes or blocks anything Claude does.
 
 ### Claude Code: shell hooks
 
@@ -57,9 +57,11 @@ Short version: the plugin reads a few session events, turns each into one of sev
 | UserPromptSubmit | `hue-status.sh working` | you sent a message |
 | PreToolUse (AskUserQuestion) | `hue-status.sh question` | Claude asks you a question |
 | Notification (permission_prompt / elicitation_dialog) | `hue-status.sh waiting` / `question` | a prompt waits for you |
+| Notification (idle_prompt) | `hue-status.sh idle` | Claude has sat idle, e.g. after you pressed Esc |
 | PostToolUse, PostToolUseFailure (Bash) | `hue-status.sh testcheck` | was this a failed test run? |
 | PostToolUse, PostToolUseFailure (all tools) | `hue-status.sh tool` | a prompt you answered is over |
 | Stop | `hue-status.sh done` | the turn finished |
+| StopFailure | `hue-status.sh idle` | an API error ended the turn |
 | SessionEnd | `hue-status.sh end` | the session closed |
 
 The script reads the hook's JSON from stdin: `session_id`, and for `testcheck` the Bash command and its output, which it only matches against test-runner and failure patterns. It runs no other script and installs nothing. It always exits 0, and each bridge request times out after 3 seconds, so it never blocks Claude.
@@ -68,7 +70,9 @@ The script reads the hook's JSON from stdin: `session_id`, and for `testcheck` t
 
 Cowork runs in the cloud or a VM, which cannot reach a bridge on your home network, so the module asks your linked Mac to run the script instead.
 
-- **The one tool it calls itself:** `osascript` from the **Control your Mac** extension (MCP server `remote-devices`, tool `Control_your_Mac__osascript`). Each call runs exactly `do shell script` of `~/.claude/hue/hue-status.sh <word>` with `{"session_id":"cowork-<id>"}` on stdin, nothing else. It is called when you send a message, when Claude asks a question, when a permission prompt is shown, after a tool call that followed one of those prompts, when a Bash test run fails, when a turn ends, and when the session ends. The model never sees or triggers these calls. If no Mac is linked the call fails quietly and the module pauses for 60 seconds.
+- **Off unless you turn it on:** the module registers no hooks and calls nothing until you turn on the plugin option `cowork_mac_light` (**Cowork: drive the light through your Mac**). Claude Code sessions on your computer never need it.
+
+- **The one tool it calls itself:** `osascript` from the **Control your Mac** extension (MCP server `remote-devices`, tool `Control_your_Mac__osascript`). Each call runs exactly `do shell script` of `~/.claude/hue/hue-status.sh <word>` with `{"session_id":"cowork-<id>"}` on stdin, nothing else. It is called when you send a message, when Claude asks a question, when a permission prompt is shown, after a tool call that followed one of those prompts, when a Bash test run fails, when a turn ends (`idle` instead of `done` if you interrupted it or an error ended it), and when the session ends. The model never sees or triggers these calls. If no Mac is linked the call fails quietly and the module pauses for 60 seconds.
 - **What it reads:** that a prompt was submitted (not its text); the name of each tool called; for Bash tools (`Bash`, `mcp__remote-devices__device_bash`) the command and the result text, matched inside the module against test-runner and failure patterns; whether a turn ended in the main conversation; the session id.
 - **What it sends, and where:** only the event word and `cowork-<session id>`, to the script on your own Mac. No conversation text, commands, tool output or file contents leave the module. From the Mac, the script sends only light commands (on, brightness, colour, blink) to your Hue Bridge over plain HTTP on your local network.
 - **Permission hook:** the module watches `PermissionRequest` (and the `Notification` event) only to turn the light orange while a permission prompt is shown. It decides nothing: it never allows, denies or asks, and always passes the request on unchanged to you.
@@ -76,7 +80,7 @@ Cowork runs in the cloud or a VM, which cannot reach a bridge on your home netwo
 
 ### Setup (`/hue-setup`)
 
-The skill runs `scripts/hue-setup.sh` on your computer (in Cowork: on the linked Mac through the same osascript tool). It copies `hue-status.sh` and `hue-setup.sh` into `~/.claude/hue/`, finds the bridge (Bonjour and `https://discovery.meethue.com`, Signify's public bridge finder), pairs with it after you press the link button, lists your lights and runs a short colour test.
+The skill runs `scripts/hue-setup.sh` on your computer (in Cowork: on the linked Mac through the same osascript tool). It copies `hue-status.sh` and `hue-setup.sh` into `~/.claude/hue/` (in Cowork the files are passed to the Mac base64-encoded, only because `do shell script` takes a single line; they are the plugin's own scripts, unchanged), finds the bridge (Bonjour and `https://discovery.meethue.com`, Signify's public bridge finder), pairs with it after you press the link button, lists your lights and runs a short colour test.
 
 ### Files
 

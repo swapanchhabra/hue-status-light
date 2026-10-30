@@ -4,7 +4,7 @@
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 
-const root = fileURLToPath(new URL('../plugins/hue-status-light/', import.meta.url))
+const root = fileURLToPath(new URL('../', import.meta.url))
 const ts = readFileSync(root + 'hooks/register.ts', 'utf8')
 const sh = readFileSync(root + 'scripts/hue-status.sh', 'utf8')
 const tsSrc = ts.match(/^const TEST_SRC = '([^']*)'$/m)?.[1]
