@@ -6,6 +6,7 @@
 #   question  Claude asks you a question         -> purple flash, then steady purple
 #   waiting   Claude needs a permission approval  -> orange flash, then steady orange
 #   tool      a tool finished: unblocks a session that was question/waiting
+#   testcheck Claude Code Bash hook: like fail, but only for a failed test run
 #   fail      a test run failed this turn (red wins at turn end)
 #   done      turn finished: bright GREEN flash, or RED flash + red
 #             reminder if a test failed this turn
@@ -27,7 +28,6 @@ CONFIG="$HUE_DIR/config"
 SDIR="$HUE_DIR/sessions"
 FLASH="$HUE_DIR/flash"
 LOG="$HUE_DIR/hue.log"
-SELF="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
 CURL="$(command -v curl || echo /usr/bin/curl)"
 
 STALE_SECS=${STALE_SECS:-10800}   # ignore sessions silent for 3 h
@@ -55,7 +55,7 @@ NOW=$(date +%s)
 
 # --- session id from hook stdin -------------------------------------------
 SESSION="default"
-case "$CMD" in status|reset|_restore|"") NOSTDIN=1 ;; esac
+case "$CMD" in status|reset|"") NOSTDIN=1 ;; esac
 if [ -z "$NOSTDIN" ] && [ ! -t 0 ]; then
   INPUT="$(cat 2>/dev/null)"
   if [ -n "$INPUT" ]; then
@@ -64,6 +64,28 @@ if [ -z "$NOSTDIN" ] && [ ! -t 0 ]; then
   fi
 fi
 SF="$SDIR/$SESSION"
+
+# --- testcheck: Claude Code PostToolUse / PostToolUseFailure hook for Bash --
+# Counts as "fail" only when the command looks like a test run AND it failed:
+# a non-zero exit (not a user interrupt), or failure text in the output.
+# Needs jq (built into macOS 15+); without it failed tests are not detected.
+if [ "$CMD" = testcheck ]; then
+  JQ="$(command -v jq || true)"
+  [ -n "$JQ" ] && [ -n "$INPUT" ] || exit 0
+  TCMD="$(printf '%s' "$INPUT" | "$JQ" -r '.tool_input.command // empty' 2>/dev/null)"
+  [ -n "$TCMD" ] || exit 0
+  TEST_RE='(^|[;&|[:space:](])(pytest|py\.test|jest|vitest|mocha|ava|playwright test|cypress run|go test|cargo (test|nextest)|ctest|rspec|phpunit|dotnet test|swift test|tox|nox|(npm|pnpm|yarn|bun)( run)? test([:[:space:]]|$)|npx (jest|vitest|mocha|playwright)|python[0-9.]* -m (pytest|unittest)|(\./)?gradlew?[^;&|]* (test|check)|mvn[^;&|]* (test|verify)|xcodebuild[^;&|]* test|make[^;&|]* (test|check))'
+  printf '%s' "$TCMD" | grep -Eq "$TEST_RE" || exit 0
+  EVENT="$(printf '%s' "$INPUT" | "$JQ" -r '.hook_event_name // empty' 2>/dev/null)"
+  if [ "$EVENT" = "PostToolUseFailure" ]; then
+    [ "$(printf '%s' "$INPUT" | "$JQ" -r '.is_interrupt // false' 2>/dev/null)" = "true" ] && exit 0
+  else
+    OUT="$(printf '%s' "$INPUT" | "$JQ" -r '[.tool_response.stdout?, .tool_response.stderr?, (.tool_response|strings)?] | map(select(.)) | join("\n")' 2>/dev/null)"
+    FAIL_RE='(\b[1-9][0-9]* (failed|failing|failures?)\b|^FAIL[[:space:]:]|--- FAIL|test result: FAILED|^FAILED |BUILD FAILURE|Tests run:.*Failures: [1-9])'
+    printf '%s' "$OUT" | grep -Eq "$FAIL_RE" || exit 0
+  fi
+  CMD=fail
+fi
 
 # --- helpers -----------------------------------------------------------------
 put() {
@@ -125,7 +147,16 @@ flash() {   # $1 = xy
   tok="$NOW-$$-$RANDOM"
   printf '%s %s\n' "$tok" "$NOW" > "$FLASH"
   put "{\"on\":true,\"bri\":254,\"xy\":[$1],\"alert\":\"lselect\"}"
-  nohup "$SELF" _restore "$tok" </dev/null >/dev/null 2>&1 &
+  # one-off timer in the background: after FLASH_SECS, unless a newer flash
+  # took over, show the steady colour again
+  (
+    sleep "$FLASH_SECS"
+    NOW=$(date +%s)
+    [ -f "$FLASH" ] || exit 0
+    read -r cur _ts < "$FLASH"
+    [ "$cur" = "$tok" ] || exit 0
+    apply_steady force
+  ) </dev/null >/dev/null 2>&1 &
 }
 
 # --- commands ----------------------------------------------------------------
@@ -187,16 +218,8 @@ case "$CMD" in
     done
     flash_active && echo "  flash running"
     ;;
-  _restore)
-    sleep "$FLASH_SECS"
-    NOW=$(date +%s)
-    [ -f "$FLASH" ] || exit 0
-    read -r cur _ts < "$FLASH"
-    [ "$cur" = "$2" ] || exit 0   # a newer flash took over
-    apply_steady force
-    ;;
   *)
-    echo "usage: $(basename "$0") working|question|waiting|tool|fail|done|end|reset|status" >&2
+    echo "usage: $(basename "$0") working|question|waiting|tool|testcheck|fail|done|end|reset|status" >&2
     ;;
 esac
 exit 0

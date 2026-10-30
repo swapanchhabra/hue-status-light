@@ -22,7 +22,7 @@ Rules:
 ## 1. Install the scripts
 
 - Claude Code: `bash "<base>/../../scripts/hue-setup.sh" install`.
-- Cowork: copy the three files `hue-status.sh`, `hue-test-check.sh`, `hue-setup.sh` from `<base>/../../scripts/` to the Mac. For each file, base64-encode it in your own shell (`base64 -w0 <file>`) and run on the Mac:
+- Cowork: copy the two files `hue-status.sh` and `hue-setup.sh` from `<base>/../../scripts/` to the Mac. For each file, base64-encode it in your own shell (`base64 -w0 <file>`) and run on the Mac:
   `do shell script "mkdir -p ~/.claude/hue && chmod 700 ~/.claude/hue && echo '<BASE64>' | base64 -D > ~/.claude/hue/<name> && chmod 755 ~/.claude/hue/<name>"`
 - Then run `check`. If jq is missing, say failed-test detection and setup need it (`brew install jq`; macOS 15+ has it built in).
 - If `check` shows the bridge is already paired and a target is set, ask whether to keep it (go to step 5) or set up again.

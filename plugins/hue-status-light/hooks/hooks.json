@@ -33,7 +33,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"${CLAUDE_PLUGIN_ROOT}/scripts/hue-test-check.sh\"",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/scripts/hue-status.sh\" testcheck",
             "timeout": 10
           }
         ]
@@ -55,7 +55,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"${CLAUDE_PLUGIN_ROOT}/scripts/hue-test-check.sh\"",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/scripts/hue-status.sh\" testcheck",
             "timeout": 10
           }
         ]

@@ -12,8 +12,9 @@ import type { EngineInterface, Register } from 'claude-code'
 //           permission prompt, green when a turn finishes, red if a test
 //           failed during it
 //
-// Every hook only observes: it never changes, answers or delays an event,
-// and always hands it on unchanged with `return next(e)`.
+// Every hook only observes: it never changes, answers or blocks an event.
+// Hooks hand their event on unchanged with `return next(e)`; the one that
+// needs a tool's result awaits next(e) and returns that result untouched.
 
 type Cmd = 'working' | 'question' | 'waiting' | 'tool' | 'fail' | 'done' | 'end'
 
@@ -27,6 +28,8 @@ const TEST_RE =
 
 const FAIL_RE =
   /(\b[1-9][0-9]* (failed|failing|failures?)\b|^FAIL[\s:]|--- FAIL|test result: FAILED|^FAILED |BUILD FAILURE|Tests run:.*Failures: [1-9])/m
+
+const INTERRUPT_RE = /interrupted by user|was interrupted|user (aborted|cancelled)/i
 
 let sessionId = 'cowork'
 let blocked = false   // a question or permission prompt is up for this session
@@ -62,21 +65,6 @@ function commandOf(input: unknown): string {
   if (input && typeof input === 'object' && 'command' in input) {
     const c = (input as { command?: unknown }).command
     if (typeof c === 'string') return c
-  }
-  return ''
-}
-
-function textOf(value: unknown): string {
-  if (typeof value === 'string') return value
-  if (value && typeof value === 'object') {
-    const o = value as { stdout?: unknown; stderr?: unknown; content?: unknown }
-    const parts = [o.stdout, o.stderr].filter((p): p is string => typeof p === 'string')
-    if (Array.isArray(o.content)) {
-      for (const b of o.content) {
-        if (b && typeof b === 'object' && typeof (b as { text?: unknown }).text === 'string') parts.push((b as { text: string }).text)
-      }
-    }
-    return parts.join('\n')
   }
   return ''
 }
@@ -138,23 +126,16 @@ export const register: Register = on => {
   })
 
   // A tool finished: unblock if it had waited for you; red on a failed test.
-  on('classic.PostToolUse', ($, e, next) => {
+  // Watches the result only; the call and its result go on unchanged.
+  on('tool.call', async ($, e, next) => {
+    const ran = await next(e)
     try {
       if (blocked) send($, 'tool')
-      if (BASH_TOOLS.has(e.tool_name) && TEST_RE.test(commandOf(e.tool_input)) && FAIL_RE.test(textOf(e.tool_response))) {
-        send($, 'fail')
+      if (BASH_TOOLS.has(e.tool) && ran.deny === undefined && TEST_RE.test(commandOf(e))) {
+        const out = ran.text ?? ''
+        if (!INTERRUPT_RE.test(out) && (ran.isError === true || FAIL_RE.test(out))) send($, 'fail')
       }
     } catch {}
-    return next(e)
-  })
-
-  on('classic.PostToolUseFailure', ($, e, next) => {
-    try {
-      if (blocked) send($, 'tool')
-      if (BASH_TOOLS.has(e.tool_name) && TEST_RE.test(commandOf(e.tool_input)) && !e.is_interrupt) {
-        send($, 'fail')
-      }
-    } catch {}
-    return next(e)
+    return ran
   })
 }

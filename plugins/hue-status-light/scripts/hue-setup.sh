@@ -57,7 +57,7 @@ case "$1" in
     echo "curl: ${CURL}"
     echo "jq: ${JQ:-MISSING (needed for setup and failed-test detection)}"
     echo "dir: $HUE_DIR"
-    for f in hue-status.sh hue-test-check.sh hue-setup.sh; do
+    for f in hue-status.sh hue-setup.sh; do
       [ -x "$HUE_DIR/$f" ] && echo "installed: $f" || echo "not installed: $f"
     done
     if [ -r "$CONFIG" ]; then
@@ -72,11 +72,12 @@ case "$1" in
     ;;
 
   install)
-    for f in hue-status.sh hue-test-check.sh hue-setup.sh; do
+    for f in hue-status.sh hue-setup.sh; do
       [ -f "$HERE/$f" ] || die "missing $HERE/$f"
       if [ "$HERE" != "$HUE_DIR" ]; then cp -f "$HERE/$f" "$HUE_DIR/$f"; fi
       chmod 755 "$HUE_DIR/$f"
     done
+    rm -f "$HUE_DIR/hue-test-check.sh"   # merged into hue-status.sh in 1.0.1
     echo "installed into $HUE_DIR"
     ;;
 
