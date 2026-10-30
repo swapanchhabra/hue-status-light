@@ -1,6 +1,6 @@
 {
   "name": "hue-status-light",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Turn one Philips Hue colour light into a status light for all your Claude Code and Cowork sessions: purple = question, orange = permission prompt, red = failed test, green flash when a turn finishes.",
   "author": { "name": "Swapan Chhabra", "url": "https://github.com/swapanchhabra" },
   "homepage": "https://github.com/swapanchhabra/hue-status-light",

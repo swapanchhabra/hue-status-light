@@ -11,6 +11,9 @@ import type { EngineInterface, Register } from 'claude-code'
 //   flash:  5 s at full brightness: purple on a question, orange on a
 //           permission prompt, green when a turn finishes, red if a test
 //           failed during it
+//
+// Every hook only observes: it never changes, answers or delays an event,
+// and always hands it on unchanged with `return next(e)`.
 
 type Cmd = 'working' | 'question' | 'waiting' | 'tool' | 'fail' | 'done' | 'end'
 
@@ -25,12 +28,9 @@ const TEST_RE =
 const FAIL_RE =
   /(\b[1-9][0-9]* (failed|failing|failures?)\b|^FAIL[\s:]|--- FAIL|test result: FAILED|^FAILED |BUILD FAILURE|Tests run:.*Failures: [1-9])/m
 
-const INTERRUPT_RE = /interrupted by user|was interrupted|user (aborted|cancelled)/i
-
 let sessionId = 'cowork'
 let blocked = false   // a question or permission prompt is up for this session
 let last: { cmd: Cmd; at: number } | undefined
-
 let backoffUntil = 0  // the Mac link was not reachable: retry after a pause
 let hinted = false    // told the person once that setup is missing
 
@@ -58,6 +58,29 @@ function send($: EngineInterface, cmd: Cmd) {
     })
 }
 
+function commandOf(input: unknown): string {
+  if (input && typeof input === 'object' && 'command' in input) {
+    const c = (input as { command?: unknown }).command
+    if (typeof c === 'string') return c
+  }
+  return ''
+}
+
+function textOf(value: unknown): string {
+  if (typeof value === 'string') return value
+  if (value && typeof value === 'object') {
+    const o = value as { stdout?: unknown; stderr?: unknown; content?: unknown }
+    const parts = [o.stdout, o.stderr].filter((p): p is string => typeof p === 'string')
+    if (Array.isArray(o.content)) {
+      for (const b of o.content) {
+        if (b && typeof b === 'object' && typeof (b as { text?: unknown }).text === 'string') parts.push((b as { text: string }).text)
+      }
+    }
+    return parts.join('\n')
+  }
+  return ''
+}
+
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     try {
@@ -69,48 +92,69 @@ export const register: Register = on => {
 
   // You sent a message: busy again, and this session's red reminder clears.
   on('prompt.submit', ($, e, next) => {
-    send($, 'working')
+    try {
+      send($, 'working')
+    } catch {}
     return next(e)
-  }).catch(($, e, next) => next(e))
+  })
 
   // End of each main-loop turn: green flash, or red flash if a test failed.
-  on('turn.complete', async ($, e, next) => {
-    const r = await next(e)
-    if (!e.agentId) send($, 'done')
-    return r
-  })
-
-  on('session.end', async ($, e, next) => {
-    send($, 'end')
+  on('turn.complete', ($, e, next) => {
+    try {
+      if (!e.agentId) send($, 'done')
+    } catch {}
     return next(e)
   })
 
-  // Orange while a tool call waits for your approval.
-  on('tool.check', async ($, e, next) => {
-    const r = await next(e)
-    if (r.decision === 'ask' && e.approver !== undefined && e.tool !== 'AskUserQuestion') send($, 'waiting')
-    return r
-  }).catch(($, e, next) => next(e))
+  on('session.end', ($, e, next) => {
+    try {
+      send($, 'end')
+    } catch {}
+    return next(e)
+  })
 
   // Purple while Claude waits for your answer to a question.
-  on('tool.call', { tool: 'AskUserQuestion' }, async ($, e, next) => {
-    send($, 'question')
-    const r = await next(e)
-    send($, 'tool')
-    return r
-  }).catch(($, e, next) => next(e))
+  on('tool.call', { tool: 'AskUserQuestion' }, ($, e, next) => {
+    try {
+      send($, 'question')
+    } catch {}
+    return next(e)
+  })
 
-  // After any other tool: unblock if it had waited for you; red on a failed test.
-  on('tool.call', async ($, e, next) => {
-    const ran = await next(e)
-    if (e.tool === 'AskUserQuestion') return ran
-    if (blocked) send($, 'tool')
-    if (!BASH_TOOLS.has(e.tool)) return ran
-    const cmd = typeof (e as any).command === 'string' ? (e as any).command : ''
-    if (!TEST_RE.test(cmd) || ran.deny !== undefined) return ran
-    const out = ran.text ?? ''
-    if (INTERRUPT_RE.test(out)) return ran
-    if (ran.isError === true || FAIL_RE.test(out)) send($, 'fail')
-    return ran
-  }).catch(($, e, next) => next(e))
+  // Orange while a permission prompt waits for you.
+  on('classic.PermissionRequest', ($, e, next) => {
+    try {
+      if (e.tool_name !== 'AskUserQuestion') send($, 'waiting')
+    } catch {}
+    return next(e)
+  })
+
+  on('classic.Notification', ($, e, next) => {
+    try {
+      if (e.notification_type === 'permission_prompt') send($, 'waiting')
+      else if (e.notification_type === 'elicitation_dialog') send($, 'question')
+    } catch {}
+    return next(e)
+  })
+
+  // A tool finished: unblock if it had waited for you; red on a failed test.
+  on('classic.PostToolUse', ($, e, next) => {
+    try {
+      if (blocked) send($, 'tool')
+      if (BASH_TOOLS.has(e.tool_name) && TEST_RE.test(commandOf(e.tool_input)) && FAIL_RE.test(textOf(e.tool_response))) {
+        send($, 'fail')
+      }
+    } catch {}
+    return next(e)
+  })
+
+  on('classic.PostToolUseFailure', ($, e, next) => {
+    try {
+      if (blocked) send($, 'tool')
+      if (BASH_TOOLS.has(e.tool_name) && TEST_RE.test(commandOf(e.tool_input)) && !e.is_interrupt) {
+        send($, 'fail')
+      }
+    } catch {}
+    return next(e)
+  })
 }
