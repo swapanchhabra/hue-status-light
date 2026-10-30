@@ -102,4 +102,6 @@ Uninstall the plugin (`/plugin uninstall hue-status-light`), then delete `~/.cla
 
 ## License
 
-MIT
+MIT. See also the [privacy policy](PRIVACY.md) and [terms of use](TERMS.md).
+
+Philips Hue is a trademark of Signify. This project is independent and not affiliated with Signify or Anthropic.
