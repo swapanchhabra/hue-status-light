@@ -1,0 +1,15 @@
+{
+  "name": "hue-status-light",
+  "description": "Philips Hue status light for Claude Code and Cowork sessions.",
+  "owner": {
+    "name": "Swapan Chhabra",
+    "url": "https://github.com/swapanchhabra"
+  },
+  "plugins": [
+    {
+      "name": "hue-status-light",
+      "source": "./plugins/hue-status-light",
+      "description": "A Philips Hue colour light as a status light for your Claude Code and Cowork sessions."
+    }
+  ]
+}
