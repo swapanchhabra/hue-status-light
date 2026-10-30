@@ -1,6 +1,6 @@
 {
   "name": "hue-status-light",
-  "version": "1.1.1",
+  "version": "1.2.0",
   "description": "Turn one Philips Hue colour light into a status light for all your Claude Code and Cowork sessions: purple = question, orange = permission prompt, red = failed test, green flash when a turn finishes.",
   "author": {
     "name": "Swapan Chhabra",
@@ -21,5 +21,13 @@
   "documentationUrl": "https://github.com/swapanchhabra/hue-status-light#readme",
   "supportUrl": "https://github.com/swapanchhabra/hue-status-light/issues",
   "privacyPolicyUrl": "https://github.com/swapanchhabra/hue-status-light/blob/main/PRIVACY.md",
-  "termsOfServiceUrl": "https://github.com/swapanchhabra/hue-status-light/blob/main/TERMS.md"
+  "termsOfServiceUrl": "https://github.com/swapanchhabra/hue-status-light/blob/main/TERMS.md",
+  "userConfig": {
+    "cowork_mac_light": {
+      "type": "boolean",
+      "title": "Cowork: drive the light through your Mac",
+      "description": "Lets Cowork sessions run ~/.claude/hue/hue-status.sh on your linked Mac through the Control your Mac osascript tool, once per session event, to set the light. Off by default; Claude Code sessions on your computer do not need it.",
+      "default": false
+    }
+  }
 }

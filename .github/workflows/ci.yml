@@ -11,19 +11,19 @@ jobs:
       - uses: actions/checkout@v4
       - name: Manifests are valid JSON
         run: |
-          for f in .claude-plugin/marketplace.json plugins/hue-status-light/.claude-plugin/plugin.json plugins/hue-status-light/hooks/hooks.json; do
+          for f in .claude-plugin/marketplace.json .claude-plugin/plugin.json hooks/hooks.json; do
             jq empty "$f"
           done
       - name: shellcheck
         # SC1010: `done` is a state name passed as an argument, not the keyword
-        run: shellcheck -S warning -e SC1010 plugins/hue-status-light/scripts/*.sh tests/run.sh
+        run: shellcheck -S warning -e SC1010 scripts/*.sh tests/run.sh
       - uses: actions/setup-node@v4
         with:
           node-version: 22
       - name: Test-run pattern (register.ts and hue-status.sh agree)
         run: node tests/patterns.test.mjs
       - name: claude plugin validate
-        run: npx -y @anthropic-ai/claude-code plugin validate plugins/hue-status-light
+        run: npx -y @anthropic-ai/claude-code plugin validate .
 
   shell-tests:
     strategy:

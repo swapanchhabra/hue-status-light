@@ -4,7 +4,7 @@
 # Usage: bash tests/run.sh
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-SCRIPTS="$ROOT/plugins/hue-status-light/scripts"
+SCRIPTS="$ROOT/scripts"
 TESTS="$ROOT/tests"
 WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT

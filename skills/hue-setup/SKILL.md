@@ -18,11 +18,12 @@ Rules:
 
 - **Claude Code on the computer itself** (macOS or Linux, same network as the bridge): run commands with the Bash tool, e.g. `bash "<base>/../../scripts/hue-setup.sh" check`. After step 1, use `~/.claude/hue/hue-setup.sh`.
 - **Cowork** (the session runs in the cloud or a VM and cannot reach the bridge): the commands must run on the person's **Mac** through the `Control your Mac` osascript tool (`mcp__remote-devices__Control_your_Mac__osascript`, loaded with ToolSearch if deferred), as `do shell script "~/.claude/hue/hue-setup.sh <subcommand>"`. If no such tool exists, tell the person that Cowork needs a task linked to their Mac with the "Control your Mac" extension enabled, and stop. The Cowork part works on macOS only.
+- **Cowork is opt-in.** The light only follows Cowork sessions once the person turns on the plugin option **Cowork: drive the light through your Mac** (`cowork_mac_light`): `/plugin configure hue-status-light@hue-status-light` in Claude Code, or the plugin's settings in the desktop app. Tell them so at the end of setup; let them turn it on themselves, and never change that setting or `settings.json` for them.
 
 ## 1. Install the scripts
 
 - Claude Code: `bash "<base>/../../scripts/hue-setup.sh" install`.
-- Cowork: copy the two files `hue-status.sh` and `hue-setup.sh` from `<base>/../../scripts/` to the Mac. For each file, base64-encode it in your own shell (`base64 -w0 <file>`) and run on the Mac:
+- Cowork: copy the two files `hue-status.sh` and `hue-setup.sh` from `<base>/../../scripts/` to the Mac, unchanged. `do shell script` takes one line, so the file travels base64-encoded; that is only transport, and the person can compare the copy with the plugin's file. For each file, base64-encode it in your own shell (`base64 -w0 <file>`) and run on the Mac:
   `do shell script "mkdir -p ~/.claude/hue && chmod 700 ~/.claude/hue && echo '<BASE64>' | base64 -D > ~/.claude/hue/<name> && chmod 755 ~/.claude/hue/<name>"`
 - Then run `check`. If jq is missing, say failed-test detection and setup need it (`brew install jq`; macOS 15+ has it built in).
 - If `check` shows the bridge is already paired and a target is set, ask whether to keep it (go to step 5) or set up again.
@@ -49,7 +50,7 @@ Run `test`: the light shows green, orange, purple, red and blue for 1.5 s each, 
 
 Tell the person, in a few lines:
 - The colours: purple = Claude is asking you a question, orange = a permission prompt, red = a test failed (until you reply), dim blue = working, green = all done. Each event flashes at full brightness for 5 s first. With several sessions the light shows whichever needs them most.
-- Claude Code: new sessions on this computer use it automatically (the plugin's hooks). Cowork: tasks linked to this Mac use it while the Mac is awake with the Claude app running.
+- Claude Code: new sessions on this computer use it automatically (the plugin's hooks). Cowork: tasks linked to this Mac use it while the Mac is awake with the Claude app running, once they turn on the plugin option `cowork_mac_light` (off by default).
 - `~/.claude/hue/hue-status.sh status` shows what each session is doing; `~/.claude/hue/hue-status.sh reset` turns the light off and forgets all sessions.
 
 If `~/.claude/settings.json` already has hooks that run `~/.claude/hue/hue-status.sh` (from a manual setup), every event would fire twice: offer to remove those entries (back the file up first) and only do it if the person says yes.
